@@ -21,10 +21,22 @@ import LoginPage from './pages/storefront/LoginPage'
 import RegisterPage from './pages/storefront/RegisterPage'
 import ForgotPasswordPage from './pages/storefront/ForgotPasswordPage'
 
+// Delivery
+import DeliveryLayout from './components/layout/DeliveryLayout'
+import DeliveryDashboardPage from './pages/delivery/DeliveryDashboardPage'
+import DeliveryOrderDetailPage from './pages/delivery/DeliveryOrderDetailPage'
+
 // Admin
+import AdminLayout from './components/layout/AdminLayout'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminOrdersPage from './pages/admin/AdminOrdersPage'
+import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage'
 import ProductsPage from './pages/admin/ProductsPage'
 import ProductFormPage from './pages/admin/ProductFormPage'
 import InventoryPage from './pages/admin/InventoryPage'
+import PromotionsPage from './pages/admin/PromotionsPage'
+import SalesReportPage from './pages/admin/SalesReportPage'
+import ReviewsPage from './pages/admin/ReviewsPage'
 
 const queryClient = new QueryClient()
 
@@ -64,15 +76,25 @@ function App() {
               <Route path="/track" element={<OrderTrackingPage />} />
               <Route path="/account/profile" element={<ProtectedRoute roles={['customer']}><Placeholder title="Profile" /></ProtectedRoute>} />
 
-              {/* Admin */}
-              <Route path="/admin" element={<ProtectedRoute roles={['admin', 'super_admin']}><Placeholder title="Admin Dashboard" /></ProtectedRoute>} />
-              <Route path="/admin/products" element={<ProtectedRoute roles={['admin', 'super_admin']}><ProductsPage /></ProtectedRoute>} />
-              <Route path="/admin/products/new" element={<ProtectedRoute roles={['admin', 'super_admin']}><ProductFormPage /></ProtectedRoute>} />
-              <Route path="/admin/products/:id" element={<ProtectedRoute roles={['admin', 'super_admin']}><ProductFormPage /></ProtectedRoute>} />
-              <Route path="/admin/inventory" element={<ProtectedRoute roles={['admin', 'super_admin']}><InventoryPage /></ProtectedRoute>} />
+              {/* Admin — nested layout route */}
+              <Route element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminLayout /></ProtectedRoute>}>
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/products" element={<ProductsPage />} />
+                <Route path="/admin/products/new" element={<ProductFormPage />} />
+                <Route path="/admin/products/:id" element={<ProductFormPage />} />
+                <Route path="/admin/inventory" element={<InventoryPage />} />
+                <Route path="/admin/orders" element={<AdminOrdersPage />} />
+                <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
+                <Route path="/admin/promotions" element={<PromotionsPage />} />
+                <Route path="/admin/reports" element={<SalesReportPage />} />
+                <Route path="/admin/reviews" element={<ReviewsPage />} />
+              </Route>
 
-              {/* Delivery */}
-              <Route path="/delivery" element={<ProtectedRoute roles={['delivery']}><Placeholder title="Delivery Dashboard" /></ProtectedRoute>} />
+              {/* Delivery — nested layout route */}
+              <Route element={<ProtectedRoute roles={['delivery']}><DeliveryLayout /></ProtectedRoute>}>
+                <Route path="/delivery" element={<DeliveryDashboardPage />} />
+                <Route path="/delivery/orders/:id" element={<DeliveryOrderDetailPage />} />
+              </Route>
 
               {/* Super admin */}
               <Route path="/super-admin" element={<ProtectedRoute roles={['super_admin']}><Placeholder title="Super Admin" /></ProtectedRoute>} />
