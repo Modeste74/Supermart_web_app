@@ -5,11 +5,14 @@ from .views import (
     AdminProductDetailView,
     AdminProductListCreateView,
     AdminProductVariantCreateView,
+    AdminReviewDeleteView,
+    AdminReviewListView,
     AdminStockAdjustView,
     AdminVariantDetailView,
     CategoryListView,
     ProductDetailView,
     ProductListView,
+    ProductReviewListCreateView,
 )
 
 urlpatterns = [
@@ -17,6 +20,7 @@ urlpatterns = [
     path('categories/', CategoryListView.as_view(), name='category-list'),
     path('products/', ProductListView.as_view(), name='product-list'),
     path('products/<slug:slug>/', ProductDetailView.as_view(), name='product-detail'),
+    path('products/<slug:slug>/reviews/', ProductReviewListCreateView.as_view(), name='product-reviews'),
 
     # Admin — categories
     path('admin/categories/', AdminCategoryListCreateView.as_view(), name='admin-category-list'),
@@ -32,4 +36,8 @@ urlpatterns = [
 
     # Admin — inventory
     path('admin/inventory/', AdminInventoryView.as_view(), name='admin-inventory'),
+
+    # Admin — reviews
+    path('admin/reviews/', AdminReviewListView.as_view(), name='admin-review-list'),
+    path('admin/reviews/<int:pk>/', AdminReviewDeleteView.as_view(), name='admin-review-delete'),
 ]

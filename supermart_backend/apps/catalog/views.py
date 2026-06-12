@@ -1,18 +1,23 @@
+from django.db.models import Avg
 from django.db import models
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.permissions import IsAdminOrSuperAdmin
-from .models import Category, Product, ProductVariant
+from .models import Category, Product, ProductVariant, Review
 from .serializers import (
     AdminCategorySerializer,
     AdminProductSerializer,
     AdminProductVariantSerializer,
+    AdminReviewSerializer,
     CategorySerializer,
+    CreateReviewSerializer,
     InventorySerializer,
     ProductDetailSerializer,
     ProductListSerializer,
+    ReviewSerializer,
     StockAdjustSerializer,
 )
 
@@ -148,3 +153,44 @@ class AdminStockAdjustView(APIView):
         variant.stock_qty = serializer.validated_data['stock_qty']
         variant.save()
         return Response(InventorySerializer(variant).data)
+
+
+# ── Review views ──────────────────────────────────────────────────────────────
+
+class ProductReviewListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def get(self, request, slug):
+        product = get_object_or_404(Product, slug=slug, is_active=True)
+        reviews = Review.objects.filter(product=product).select_related('user')
+        avg = reviews.aggregate(avg=Avg('rating'))['avg']
+        return Response({
+            'count': reviews.count(),
+            'average_rating': round(float(avg), 1) if avg else None,
+            'results': ReviewSerializer(reviews, many=True).data,
+        })
+
+    def post(self, request, slug):
+        product = get_object_or_404(Product, slug=slug, is_active=True)
+        serializer = CreateReviewSerializer(
+            data=request.data,
+            context={'request': request, 'product': product},
+        )
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save()
+        return Response(ReviewSerializer(review).data, status=status.HTTP_201_CREATED)
+
+
+class AdminReviewListView(generics.ListAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    serializer_class = AdminReviewSerializer
+    queryset = Review.objects.select_related('user', 'product').order_by('-created_at')
+    pagination_class = None
+
+
+class AdminReviewDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    queryset = Review.objects.all()
