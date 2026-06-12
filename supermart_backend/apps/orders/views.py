@@ -9,6 +9,7 @@ from core.permissions import IsCustomer, IsAdmin, IsAdminOrSuperAdmin, IsDeliver
 from .models import DeliveryZone, Order
 from .serializers import (
     DeliveryZoneSerializer,
+    DeliveryOrderSerializer,
     OrderListSerializer,
     OrderSerializer,
     PlaceOrderSerializer,
@@ -116,6 +117,16 @@ class AdminOrderStatusUpdateView(APIView):
 
 
 # --- Delivery staff views ---
+
+class DeliveryOrderDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsDelivery]
+    serializer_class = DeliveryOrderSerializer
+
+    def get_queryset(self):
+        return Order.objects.select_related('user', 'delivery_address').prefetch_related(
+            'items', 'status_history__changed_by', 'delivery_zone'
+        ).filter(status__in=['dispatched', 'out_for_delivery', 'delivered'])
+
 
 class DeliveryOrderListView(generics.ListAPIView):
     permission_classes = [IsDelivery]

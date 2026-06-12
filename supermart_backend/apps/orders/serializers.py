@@ -1,7 +1,10 @@
 from decimal import Decimal
 from django.db import models, transaction
+from django.db.models import F
+from django.utils import timezone
 from rest_framework import serializers
 
+from apps.admin_panel.models import Promotion
 from apps.catalog.models import ProductVariant
 from apps.cart.models import Cart
 from apps.users.models import Address
@@ -118,6 +121,7 @@ class PlaceOrderSerializer(serializers.Serializer):
     delivery_address_id = serializers.IntegerField(required=False, allow_null=True)
     delivery_zone_id = serializers.IntegerField(required=False, allow_null=True)
     special_instructions = serializers.CharField(required=False, allow_blank=True, default='')
+    promo_code = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate(self, data):
         if data['fulfilment_type'] == 'delivery':
@@ -203,7 +207,30 @@ class PlaceOrderSerializer(serializers.Serializer):
         subtotal = sum(
             variants[item.id].price * item.quantity for item in cart_items
         )
-        total = subtotal + delivery_fee
+
+        # 4a. Apply promotion if a valid promo_code was provided
+        discount_amount = Decimal('0.00')
+        applied_promotion = None
+        promo_code = validated_data.get('promo_code', '').strip()
+        if promo_code:
+            try:
+                promo = Promotion.objects.get(code__iexact=promo_code, is_active=True)
+                now = timezone.now()
+                uses_ok = promo.max_uses is None or promo.current_uses < promo.max_uses
+                if (promo.valid_from <= now <= promo.valid_to
+                        and uses_ok
+                        and subtotal >= promo.min_order_amount):
+                    if promo.type == 'percentage':
+                        discount_amount = (subtotal * promo.value / 100).quantize(Decimal('0.01'))
+                    elif promo.type == 'fixed_amount':
+                        discount_amount = min(promo.value, subtotal)
+                    elif promo.type == 'free_delivery':
+                        discount_amount = delivery_fee
+                    applied_promotion = promo
+            except Promotion.DoesNotExist:
+                pass  # Invalid at order time — ignore silently
+
+        total = subtotal + delivery_fee - discount_amount
 
         # 5. Create Order
         order = Order.objects.create(
@@ -212,7 +239,7 @@ class PlaceOrderSerializer(serializers.Serializer):
             payment_method=validated_data['payment_method'],
             subtotal=subtotal,
             delivery_fee=delivery_fee,
-            discount_amount=Decimal('0.00'),
+            discount_amount=discount_amount,
             total=total,
             delivery_address=delivery_address,
             delivery_zone=delivery_zone,
@@ -266,7 +293,21 @@ class PlaceOrderSerializer(serializers.Serializer):
         # 9. Clear cart
         cart.items.all().delete()
 
+        # 10. Increment promotion usage counter
+        if applied_promotion:
+            Promotion.objects.filter(id=applied_promotion.id).update(
+                current_uses=F('current_uses') + 1
+            )
+
         return order
+
+
+# --- Delivery serializers ---
+
+class DeliveryAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['label', 'street', 'city', 'region', 'latitude', 'longitude']
 
 
 # --- Admin serializers ---
@@ -318,6 +359,17 @@ class AdminOrderSerializer(AdminOrderListSerializer):
             'status_history',
             'updated_at',
         ]
+
+
+class DeliveryOrderSerializer(AdminOrderSerializer):
+    delivery_address = DeliveryAddressSerializer(read_only=True)
+    customer_phone = serializers.SerializerMethodField()
+
+    class Meta(AdminOrderSerializer.Meta):
+        fields = AdminOrderSerializer.Meta.fields + ['delivery_address', 'customer_phone']
+
+    def get_customer_phone(self, obj):
+        return obj.user.phone
 
 
 class UpdateOrderStatusSerializer(serializers.Serializer):

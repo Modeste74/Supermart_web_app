@@ -18,5 +18,6 @@ urlpatterns = [
 
     # Delivery staff
     path('delivery/orders/', views.DeliveryOrderListView.as_view()),
+    path('delivery/orders/<int:pk>/', views.DeliveryOrderDetailView.as_view()),
     path('delivery/orders/<int:pk>/status/', views.DeliveryOrderStatusUpdateView.as_view()),
 ]
