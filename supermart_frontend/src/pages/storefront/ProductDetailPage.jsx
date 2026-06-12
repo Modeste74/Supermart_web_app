@@ -1,17 +1,34 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
-import { getProduct } from '../../api/catalog'
+import { getProduct, getProductReviews, createReview } from '../../api/catalog'
 import { useCart } from '../../context/CartContext'
+import { useAuth } from '../../context/AuthContext'
 import VariantSelector from '../../components/product/VariantSelector'
 import Navbar from '../../components/layout/Navbar'
 import { formatPrice } from '../../utils/formatters'
 
+function StarRating({ rating, max = 5, size = 'md' }) {
+  const cls = size === 'sm' ? 'text-sm' : 'text-lg'
+  return (
+    <span className={cls}>
+      {Array.from({ length: max }, (_, i) => (
+        <span key={i} className={i < rating ? 'text-amber-400' : 'text-gray-200'}>★</span>
+      ))}
+    </span>
+  )
+}
+
 export default function ProductDetailPage() {
   const { slug } = useParams()
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedImage, setSelectedImage] = useState(0)
   const [addError, setAddError] = useState('')
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSuccess, setReviewSuccess] = useState(false)
   const { addToCart, loading: cartLoading } = useCart()
 
   const { data, isLoading, isError } = useQuery({
@@ -20,6 +37,23 @@ export default function ProductDetailPage() {
     onSuccess: (res) => {
       const first = res.data.variants?.find((v) => v.is_active && !v.is_out_of_stock)
       if (first) setSelectedVariant(first)
+    },
+  })
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ['product-reviews', slug],
+    queryFn: () => getProductReviews(slug),
+    enabled: !!slug,
+  })
+  const reviewsPayload = reviewsData?.data ?? { count: 0, average_rating: null, results: [] }
+
+  const submitReview = useMutation({
+    mutationFn: (data) => createReview(slug, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-reviews', slug] })
+      setReviewComment('')
+      setReviewRating(5)
+      setReviewSuccess(true)
     },
   })
 
@@ -149,6 +183,98 @@ export default function ProductDetailPage() {
             </button>
           </div>
         </div>
+
+        {/* Reviews */}
+        <section className="mt-14">
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Customer Reviews</h2>
+            {reviewsPayload.count > 0 && (
+              <span className="text-sm text-gray-500">
+                <StarRating rating={Math.round(reviewsPayload.average_rating)} size="sm" />
+                {' '}{Number(reviewsPayload.average_rating).toFixed(1)} ({reviewsPayload.count})
+              </span>
+            )}
+          </div>
+
+          {/* Submit review */}
+          {user ? (
+            reviewSuccess ? (
+              <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-8 text-sm text-green-700">
+                Thank you for your review!{' '}
+                <button onClick={() => setReviewSuccess(false)} className="underline">Write another</button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm p-5 mb-8">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Write a Review</h3>
+                <div className="flex gap-1 mb-3">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setReviewRating(star)}
+                      className={`text-2xl transition ${star <= reviewRating ? 'text-amber-400' : 'text-gray-200 hover:text-amber-200'}`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share your experience with this product…"
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary mb-3"
+                />
+                {submitReview.isError && (
+                  <p className="text-xs text-red-500 mb-2">
+                    {submitReview.error?.response?.data?.detail
+                      ?? submitReview.error?.response?.data?.non_field_errors?.[0]
+                      ?? 'Could not submit review.'}
+                  </p>
+                )}
+                <button
+                  onClick={() => submitReview.mutate({ rating: reviewRating, comment: reviewComment })}
+                  disabled={submitReview.isPending}
+                  className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-xl hover:bg-primary-dark transition disabled:opacity-50"
+                >
+                  {submitReview.isPending ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            )
+          ) : (
+            <p className="text-sm text-gray-500 mb-8">
+              <Link to="/login" className="text-primary hover:underline">Sign in</Link> to leave a review.
+            </p>
+          )}
+
+          {/* Review list */}
+          {reviewsPayload.count === 0 ? (
+            <p className="text-sm text-gray-400">No reviews yet. Be the first!</p>
+          ) : (
+            <div className="space-y-4">
+              {reviewsPayload.results.map((review) => (
+                <div key={review.id} className="bg-white rounded-2xl shadow-sm p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{review.author_name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <StarRating rating={review.rating} size="sm" />
+                        {review.is_verified_purchase && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Verified Purchase</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm text-gray-600 mt-3 leading-relaxed">{review.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )
