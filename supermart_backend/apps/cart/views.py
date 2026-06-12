@@ -1,7 +1,11 @@
+from decimal import Decimal
+
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.admin_panel.models import Promotion
 from .models import Cart, CartItem
 from .serializers import (
     AddToCartSerializer,
@@ -123,11 +127,56 @@ class MergeCartView(APIView):
 
 
 class ApplyCouponView(APIView):
-    """Stub — coupon engine is implemented in Phase 10."""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        return Response(
-            {'detail': 'Coupon system not available yet.'},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
-        )
+        code = request.data.get('code', '').strip()
+        if not code:
+            return Response({'detail': 'Please enter a coupon code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            promo = Promotion.objects.get(code__iexact=code, is_active=True)
+        except Promotion.DoesNotExist:
+            return Response({'detail': 'Invalid or inactive coupon code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        now = timezone.now()
+        if not (promo.valid_from <= now <= promo.valid_to):
+            return Response({'detail': 'This coupon has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if promo.max_uses is not None and promo.current_uses >= promo.max_uses:
+            return Response({'detail': 'This coupon has reached its usage limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cart = Cart.objects.prefetch_related('items__product_variant').get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response({'detail': 'Your cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subtotal = cart.subtotal
+        if not cart.items.exists():
+            return Response({'detail': 'Your cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if subtotal < promo.min_order_amount:
+            return Response(
+                {'detail': f'Minimum order of KES {promo.min_order_amount} required for this coupon.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if promo.type == 'percentage':
+            discount = (subtotal * promo.value / 100).quantize(Decimal('0.01'))
+            message = f'{promo.value}% off applied'
+        elif promo.type == 'fixed_amount':
+            discount = min(promo.value, subtotal)
+            message = f'KES {discount} off applied'
+        else:
+            discount = Decimal('0.00')
+            message = 'Free delivery applied'
+
+        return Response({
+            'promo_id': promo.id,
+            'name': promo.name,
+            'code': promo.code,
+            'type': promo.type,
+            'value': str(promo.value),
+            'discount_amount': float(discount),
+            'message': message,
+        })
