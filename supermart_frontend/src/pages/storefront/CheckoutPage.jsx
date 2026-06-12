@@ -17,6 +17,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1)
   const [placing, setPlacing] = useState(false)
   const [placeError, setPlaceError] = useState(null)
+  const [appliedPromo, setAppliedPromo] = useState(null)
 
   const [checkoutData, setCheckoutData] = useState({
     fulfilment_type: 'delivery',
@@ -45,6 +46,7 @@ export default function CheckoutPage() {
         delivery_address_id: checkoutData.delivery_address_id || undefined,
         delivery_zone_id: checkoutData.delivery_zone_id || undefined,
         special_instructions: checkoutData.special_instructions,
+        promo_code: appliedPromo?.code || undefined,
       })
       await refreshCart()
       navigate(`/checkout/success?order=${res.data.order_number}`)
@@ -113,6 +115,9 @@ export default function CheckoutPage() {
                 _onInstructionsChange: (v) => updateData({ special_instructions: v }),
               }}
               deliveryZone={selectedZone}
+              appliedPromo={appliedPromo}
+              onApplyCoupon={setAppliedPromo}
+              onRemoveCoupon={() => setAppliedPromo(null)}
               onBack={() => setStep(2)}
               onPlace={handlePlace}
               placing={placing}
