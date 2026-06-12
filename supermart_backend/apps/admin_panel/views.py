@@ -1,3 +1,125 @@
-from django.shortcuts import render
+from datetime import timedelta
 
-# Create your views here.
+from django.db.models import Count, F, Sum
+from django.db.models.functions import TruncDate
+from django.utils import timezone
+from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.catalog.models import ProductVariant
+from apps.orders.models import Order
+from apps.orders.serializers import AdminOrderListSerializer
+from core.permissions import IsAdminOrSuperAdmin
+
+from .models import Promotion
+from .serializers import PromotionSerializer
+
+
+class DashboardView(APIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def get(self, request):
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today_start - timedelta(days=7)
+        month_start = today_start - timedelta(days=30)
+
+        paid = Order.objects.filter(payment_status='paid')
+
+        revenue = {
+            'today': float(paid.filter(created_at__gte=today_start).aggregate(t=Sum('total'))['t'] or 0),
+            'last_7_days': float(paid.filter(created_at__gte=week_start).aggregate(t=Sum('total'))['t'] or 0),
+            'last_30_days': float(paid.filter(created_at__gte=month_start).aggregate(t=Sum('total'))['t'] or 0),
+            'all_time': float(paid.aggregate(t=Sum('total'))['t'] or 0),
+        }
+
+        all_orders = Order.objects.all()
+        order_counts = {'total': all_orders.count()}
+        for s, _ in Order._meta.get_field('status').choices:
+            order_counts[s] = all_orders.filter(status=s).count()
+
+        low_stock_qs = ProductVariant.objects.filter(
+            is_active=True,
+            stock_qty__lte=F('low_stock_threshold'),
+            stock_qty__gt=0,
+        ).select_related('product')
+
+        out_of_stock_qs = ProductVariant.objects.filter(is_active=True, stock_qty=0)
+
+        low_stock_items = [
+            {
+                'id': v.id,
+                'sku': v.sku,
+                'product_name': v.product.name,
+                'variant_label': v.variant_label,
+                'stock_qty': v.stock_qty,
+                'low_stock_threshold': v.low_stock_threshold,
+            }
+            for v in low_stock_qs[:10]
+        ]
+
+        recent_orders = (
+            Order.objects.select_related('user')
+            .prefetch_related('items')
+            .order_by('-created_at')[:10]
+        )
+
+        return Response({
+            'revenue': revenue,
+            'orders': order_counts,
+            'inventory': {
+                'low_stock_count': low_stock_qs.count(),
+                'out_of_stock_count': out_of_stock_qs.count(),
+                'low_stock_items': low_stock_items,
+            },
+            'recent_orders': AdminOrderListSerializer(recent_orders, many=True).data,
+        })
+
+
+class SalesReportView(APIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def get(self, request):
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        qs = Order.objects.filter(payment_status='paid')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        totals = qs.aggregate(total_revenue=Sum('total'), total_orders=Count('id'))
+
+        daily = list(
+            qs.annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(revenue=Sum('total'), orders=Count('id'))
+            .order_by('date')
+        )
+        for row in daily:
+            if row['date']:
+                row['date'] = row['date'].isoformat()
+            row['revenue'] = float(row['revenue'] or 0)
+
+        return Response({
+            'date_from': date_from,
+            'date_to': date_to,
+            'total_revenue': float(totals['total_revenue'] or 0),
+            'total_orders': totals['total_orders'] or 0,
+            'daily': daily,
+        })
+
+
+class PromotionListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    serializer_class = PromotionSerializer
+    queryset = Promotion.objects.all()
+    pagination_class = None
+
+
+class PromotionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+    serializer_class = PromotionSerializer
+    queryset = Promotion.objects.all()
