@@ -19,3 +19,9 @@ export const adminCreateCategory = (data) => api.post('/admin/categories/', data
 // Admin — inventory
 export const adminGetInventory = (params = {}) => api.get('/admin/inventory/', { params })
 export const adminAdjustStock = (id, stock_qty) => api.patch(`/admin/variants/${id}/stock/`, { stock_qty })
+
+// Reviews
+export const getProductReviews = (slug) => api.get(`/products/${slug}/reviews/`)
+export const createReview = (slug, data) => api.post(`/products/${slug}/reviews/`, data)
+export const adminGetReviews = () => api.get('/admin/reviews/')
+export const adminDeleteReview = (id) => api.delete(`/admin/reviews/${id}/`)
