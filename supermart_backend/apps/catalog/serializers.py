@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Product, ProductVariant
+from .models import Category, Product, ProductVariant, Review
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -130,3 +130,65 @@ class InventorySerializer(serializers.ModelSerializer):
 
 class StockAdjustSerializer(serializers.Serializer):
     stock_qty = serializers.IntegerField(min_value=0)
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = ['id', 'author_name', 'rating', 'comment', 'is_verified_purchase', 'created_at']
+
+    def get_author_name(self, obj):
+        return obj.user.full_name
+
+
+class CreateReviewSerializer(serializers.Serializer):
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    comment = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate(self, data):
+        user = self.context['request'].user
+        product = self.context['product']
+        if Review.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError('You have already reviewed this product.')
+        return data
+
+    def create(self, validated_data):
+        from apps.orders.models import OrderItem
+        user = self.context['request'].user
+        product = self.context['product']
+        has_purchased = OrderItem.objects.filter(
+            order__user=user,
+            order__status='delivered',
+            product_variant__product=product,
+        ).exists()
+        return Review.objects.create(
+            user=user,
+            product=product,
+            rating=validated_data['rating'],
+            comment=validated_data.get('comment', ''),
+            is_verified_purchase=has_purchased,
+        )
+
+
+class AdminReviewSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+    author_email = serializers.SerializerMethodField()
+    product_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = [
+            'id', 'author_name', 'author_email', 'product_name',
+            'rating', 'comment', 'is_verified_purchase', 'created_at',
+        ]
+
+    def get_author_name(self, obj):
+        return obj.user.full_name
+
+    def get_author_email(self, obj):
+        return obj.user.email
+
+    def get_product_name(self, obj):
+        return obj.product.name
