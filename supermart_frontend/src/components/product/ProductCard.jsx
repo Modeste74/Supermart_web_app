@@ -20,7 +20,7 @@ export default function ProductCard({ product }) {
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-5">
         <p className="text-xs text-accent font-medium uppercase tracking-wide mb-1">{category_name}</p>
         <h3 className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2 mb-2">{name}</h3>
 

@@ -67,7 +67,7 @@ export default function OrderDetailPage() {
     return (
       <div className="min-h-screen bg-cream">
         <Navbar />
-        <div className="max-w-3xl mx-auto px-4 py-10 animate-pulse space-y-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/3" />
           <div className="bg-white rounded-2xl h-40" />
           <div className="bg-white rounded-2xl h-40" />
@@ -80,7 +80,7 @@ export default function OrderDetailPage() {
     return (
       <div className="min-h-screen bg-cream">
         <Navbar />
-        <div className="max-w-3xl mx-auto px-4 py-20 text-center text-gray-400">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-400">
           <p className="text-4xl mb-3">😕</p>
           <p>Order not found.</p>
           <Link to="/account/orders" className="mt-4 inline-block text-primary hover:underline text-sm">Back to orders</Link>
@@ -100,7 +100,7 @@ export default function OrderDetailPage() {
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-8 space-y-5">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-5">
         <div className="flex items-center gap-3">
           <Link to="/account/orders" className="text-sm text-gray-400 hover:text-primary">← Orders</Link>
           <h1 className="text-xl font-bold text-gray-800">{order.order_number}</h1>

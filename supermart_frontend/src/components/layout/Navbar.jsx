@@ -28,7 +28,7 @@ export default function Navbar() {
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
         {/* Logo */}
         <Link to="/" className="text-xl font-bold text-primary shrink-0">
           Supermart
@@ -107,7 +107,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile search */}
-      <form onSubmit={handleSearch} className="sm:hidden px-4 pb-3">
+      <form onSubmit={handleSearch} className="sm:hidden px-6 pb-4">
         <div className="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent">
           <input
             type="text"

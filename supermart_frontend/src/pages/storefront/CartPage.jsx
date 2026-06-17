@@ -11,7 +11,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Your Cart</h1>
           {itemCount > 0 && (

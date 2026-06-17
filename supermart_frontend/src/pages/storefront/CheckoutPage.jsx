@@ -85,7 +85,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <main className="max-w-lg mx-auto px-4 py-8">
+      <main className="max-w-lg mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Checkout</h1>
 
         <CheckoutSteps steps={STEPS} current={step} />
