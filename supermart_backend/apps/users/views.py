@@ -1,6 +1,7 @@
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import models as db_models
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import generics, permissions, status
@@ -9,13 +10,16 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+from core.permissions import IsSuperAdmin
 from .models import Address, User
 from .serializers import (
     AddressSerializer,
+    ChangePasswordSerializer,
     ForgotPasswordSerializer,
     LoginSerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
+    SuperAdminUserSerializer,
     UserSerializer,
 )
 
@@ -104,6 +108,16 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password changed successfully.'})
+
+
 class AddressListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AddressSerializer
@@ -118,3 +132,40 @@ class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Address.objects.filter(user=self.request.user)
+
+
+# --- Super admin views ---
+
+class SuperAdminUserListView(generics.ListAPIView):
+    permission_classes = [IsSuperAdmin]
+    serializer_class = SuperAdminUserSerializer
+
+    def get_queryset(self):
+        qs = User.objects.all().order_by('-created_at')
+        role = self.request.query_params.get('role', '').strip()
+        search = self.request.query_params.get('search', '').strip()
+        if role:
+            qs = qs.filter(role=role)
+        if search:
+            qs = qs.filter(
+                db_models.Q(email__icontains=search)
+                | db_models.Q(first_name__icontains=search)
+                | db_models.Q(last_name__icontains=search)
+            )
+        return qs
+
+
+class SuperAdminUserDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsSuperAdmin]
+    serializer_class = SuperAdminUserSerializer
+    queryset = User.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        # Prevent super_admin from removing their own super_admin role
+        instance = self.get_object()
+        if instance == request.user and request.data.get('role') != 'super_admin':
+            return Response(
+                {'detail': 'You cannot change your own role.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().update(request, *args, **kwargs)
