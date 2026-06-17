@@ -3,7 +3,7 @@ import { useCart } from '../../context/CartContext'
 import { formatPrice } from '../../utils/formatters'
 
 export default function CartSummary({ onCheckout }) {
-  const { cart, itemCount } = useCart()
+  const { cart, itemCount, setCartOpen } = useCart()
   const { subtotal = 0 } = cart
 
   return (
@@ -38,7 +38,11 @@ export default function CartSummary({ onCheckout }) {
         </Link>
       )}
 
-      <Link to="/shop" className="block text-center text-sm text-primary hover:underline">
+      <Link
+        to="/shop"
+        onClick={() => setCartOpen(false)}
+        className="block text-center text-sm text-primary hover:underline"
+      >
         Continue Shopping
       </Link>
     </div>

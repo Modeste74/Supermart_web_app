@@ -25,7 +25,7 @@ export default function CartDrawer() {
       {/* Drawer */}
       <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-800">
             Your Cart
             {itemCount > 0 && (
@@ -40,7 +40,7 @@ export default function CartDrawer() {
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5">
+        <div className="flex-1 overflow-y-auto px-6">
           {cart.items?.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 pb-20">
               <span className="text-5xl mb-4">🛒</span>
@@ -56,7 +56,7 @@ export default function CartDrawer() {
 
         {/* Footer */}
         {cart.items?.length > 0 && (
-          <div className="px-5 py-4 border-t border-gray-100">
+          <div className="px-6 py-5 border-t border-gray-100">
             <CartSummary onCheckout={() => setCartOpen(false)} />
           </div>
         )}
