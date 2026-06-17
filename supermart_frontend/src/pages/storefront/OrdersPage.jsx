@@ -38,7 +38,7 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">My Orders</h1>
 
         {isLoading ? (
@@ -56,7 +56,7 @@ export default function OrdersPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {orders.map((order) => (
               <Link
                 key={order.id}
