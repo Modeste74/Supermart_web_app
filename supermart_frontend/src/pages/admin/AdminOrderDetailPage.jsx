@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getAdminOrder, updateOrderStatus } from '../../api/orders'
+import { getAdminOrder, updateOrderStatus, updateOrderPaymentStatus } from '../../api/orders'
 import { formatPrice } from '../../utils/formatters'
 
 const STATUS_OPTIONS = [
@@ -25,6 +25,7 @@ export default function AdminOrderDetailPage() {
   const [newStatus, setNewStatus] = useState('')
   const [note, setNote] = useState('')
   const [updateError, setUpdateError] = useState('')
+  const [paymentError, setPaymentError] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-order', id],
@@ -47,6 +48,21 @@ export default function AdminOrderDetailPage() {
         err.response?.data?.status?.[0] ??
         err.response?.data?.detail ??
         'Failed to update status.'
+      ),
+  })
+
+  const paymentMutation = useMutation({
+    mutationFn: (ps) => updateOrderPaymentStatus(id, ps),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin-order', id])
+      queryClient.invalidateQueries(['admin-orders'])
+      setPaymentError('')
+    },
+    onError: (err) =>
+      setPaymentError(
+        err.response?.data?.payment_status ??
+        err.response?.data?.detail ??
+        'Failed to update payment status.'
       ),
   })
 
@@ -95,6 +111,44 @@ export default function AdminOrderDetailPage() {
         <p className="text-gray-400 capitalize">
           {order.fulfilment_type} · {order.payment_method?.replace(/_/g, ' ')}
         </p>
+      </div>
+
+      {/* Payment status */}
+      <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">Payment</h2>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            order.payment_status === 'paid'
+              ? 'bg-green-100 text-green-700'
+              : order.payment_status === 'refunded'
+                ? 'bg-purple-100 text-purple-700'
+                : 'bg-yellow-100 text-yellow-700'
+          }`}>
+            {order.payment_status}
+          </span>
+        </div>
+        <p className="text-xs text-gray-400 capitalize">
+          Method: {order.payment_method?.replace(/_/g, ' ')}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {['unpaid', 'paid', 'refunded'].filter((ps) => ps !== order.payment_status).map((ps) => (
+            <button
+              key={ps}
+              onClick={() => { setPaymentError(''); paymentMutation.mutate(ps) }}
+              disabled={paymentMutation.isPending}
+              className={`text-xs font-semibold px-4 py-1.5 rounded-lg border transition disabled:opacity-50 ${
+                ps === 'paid'
+                  ? 'border-green-400 text-green-700 hover:bg-green-50'
+                  : ps === 'refunded'
+                    ? 'border-purple-400 text-purple-700 hover:bg-purple-50'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {paymentMutation.isPending ? 'Saving…' : `Mark as ${ps}`}
+            </button>
+          ))}
+        </div>
+        {paymentError && <p className="text-xs text-red-500">{paymentError}</p>}
       </div>
 
       {/* Status update */}

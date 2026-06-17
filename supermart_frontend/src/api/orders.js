@@ -17,6 +17,9 @@ export const getAdminOrder = (id) => api.get(`/admin/orders/${id}/`)
 
 export const updateOrderStatus = (id, data) => api.put(`/admin/orders/${id}/status/`, data)
 
+export const updateOrderPaymentStatus = (id, payment_status) =>
+  api.put(`/admin/orders/${id}/payment-status/`, { payment_status })
+
 // Delivery
 export const getDeliveryOrders = () => api.get('/delivery/orders/')
 export const getDeliveryOrder = (id) => api.get(`/delivery/orders/${id}/`)
