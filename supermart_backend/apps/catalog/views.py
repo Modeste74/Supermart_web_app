@@ -54,9 +54,11 @@ class ProductListView(generics.ListAPIView):
             qs = qs.filter(name__icontains=search)
         if in_stock == 'true':
             qs = qs.filter(variants__stock_qty__gt=0, variants__is_active=True).distinct()
-        if min_price:
+        if min_price and max_price:
+            qs = qs.filter(variants__price__gte=min_price, variants__price__lte=max_price).distinct()
+        elif min_price:
             qs = qs.filter(variants__price__gte=min_price).distinct()
-        if max_price:
+        elif max_price:
             qs = qs.filter(variants__price__lte=max_price).distinct()
 
         return qs
