@@ -10,9 +10,9 @@ from rest_framework.views import APIView
 from apps.catalog.models import ProductVariant
 from apps.orders.models import Order
 from apps.orders.serializers import AdminOrderListSerializer
-from core.permissions import IsAdminOrSuperAdmin
+from core.permissions import IsAdminOrSuperAdmin, IsSuperAdmin
 
-from .models import Promotion
+from .models import Promotion, StoreSettings
 from .serializers import PromotionSerializer
 
 
@@ -123,3 +123,76 @@ class PromotionDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrSuperAdmin]
     serializer_class = PromotionSerializer
     queryset = Promotion.objects.all()
+
+
+# --- Super admin views ---
+
+class SuperAdminAnalyticsView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        from apps.users.models import User
+        from apps.orders.models import OrderItem
+
+        now = timezone.now()
+        month_ago = now - timedelta(days=30)
+
+        all_users = User.objects.all()
+        user_stats = {
+            'total': all_users.count(),
+            'by_role': {role: all_users.filter(role=role).count() for role, _ in User.ROLE_CHOICES},
+            'new_last_30_days': all_users.filter(created_at__gte=month_ago).count(),
+        }
+
+        paid = Order.objects.filter(payment_status='paid')
+        order_stats = {
+            'total': Order.objects.count(),
+            'revenue_all_time': float(paid.aggregate(t=Sum('total'))['t'] or 0),
+            'revenue_last_30_days': float(
+                paid.filter(created_at__gte=month_ago).aggregate(t=Sum('total'))['t'] or 0
+            ),
+        }
+
+        top_products = list(
+            OrderItem.objects.values('product_name_snapshot')
+            .annotate(total_sold=Sum('quantity'), revenue=Sum('line_total'))
+            .order_by('-total_sold')[:10]
+        )
+        for row in top_products:
+            row['revenue'] = float(row['revenue'] or 0)
+
+        return Response({
+            'users': user_stats,
+            'orders': order_stats,
+            'top_products': top_products,
+        })
+
+
+_DEFAULT_SETTINGS = {
+    'store_name': 'Supermart',
+    'delivery_enabled': 'true',
+    'min_order_amount': '0',
+    'store_phone': '',
+    'store_email': '',
+}
+
+
+class SuperAdminSettingsView(APIView):
+    permission_classes = [IsSuperAdmin]
+
+    def _current(self):
+        result = dict(_DEFAULT_SETTINGS)
+        for s in StoreSettings.objects.all():
+            result[s.key] = s.value
+        return result
+
+    def get(self, request):
+        return Response(self._current())
+
+    def put(self, request):
+        for key, value in request.data.items():
+            StoreSettings.objects.update_or_create(
+                key=key,
+                defaults={'value': str(value)},
+            )
+        return Response(self._current())

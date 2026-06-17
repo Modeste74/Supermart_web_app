@@ -25,3 +25,15 @@ class Promotion(models.Model):
     def __str__(self):
         code_label = f' ({self.code})' if self.code else ''
         return f'{self.name}{code_label}'
+
+
+class StoreSettings(models.Model):
+    key = models.CharField(max_length=100, primary_key=True)
+    value = models.TextField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'store_settings'
+
+    def __str__(self):
+        return f'{self.key} = {self.value}'
