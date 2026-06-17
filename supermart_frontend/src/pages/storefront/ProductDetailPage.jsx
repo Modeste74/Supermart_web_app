@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { getProduct, getProductReviews, createReview } from '../../api/catalog'
@@ -34,11 +34,14 @@ export default function ProductDetailPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['product', slug],
     queryFn: () => getProduct(slug),
-    onSuccess: (res) => {
-      const first = res.data.variants?.find((v) => v.is_active && !v.is_out_of_stock)
-      if (first) setSelectedVariant(first)
-    },
   })
+
+  useEffect(() => {
+    if (data?.data?.variants) {
+      const first = data.data.variants.find((v) => v.is_active && !v.is_out_of_stock)
+      if (first) setSelectedVariant(first)
+    }
+  }, [data])
 
   const { data: reviewsData } = useQuery({
     queryKey: ['product-reviews', slug],
@@ -63,7 +66,7 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-cream">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 animate-pulse">
           <div className="grid md:grid-cols-2 gap-10">
             <div className="aspect-square bg-gray-200 rounded-2xl" />
             <div className="space-y-4">
@@ -81,7 +84,7 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-cream">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 text-center text-gray-400">
           <p className="text-4xl mb-3">😕</p>
           <p className="font-medium">Product not found.</p>
           <Link to="/shop" className="mt-4 inline-block text-primary hover:underline text-sm">Back to shop</Link>
@@ -103,7 +106,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Breadcrumb */}
         <nav className="text-xs text-gray-400 mb-6 flex gap-1">
           <Link to="/" className="hover:text-primary">Home</Link>
