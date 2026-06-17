@@ -116,6 +116,22 @@ class AdminOrderStatusUpdateView(APIView):
         return Response(AdminOrderSerializer(order).data)
 
 
+class AdminOrderPaymentStatusUpdateView(APIView):
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def put(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        payment_status = request.data.get('payment_status')
+        if payment_status not in ('unpaid', 'paid', 'refunded'):
+            return Response(
+                {'payment_status': 'Must be unpaid, paid, or refunded.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        order.payment_status = payment_status
+        order.save(update_fields=['payment_status', 'updated_at'])
+        return Response(AdminOrderSerializer(order).data)
+
+
 # --- Delivery staff views ---
 
 class DeliveryOrderDetailView(generics.RetrieveAPIView):
