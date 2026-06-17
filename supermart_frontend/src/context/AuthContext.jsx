@@ -44,8 +44,13 @@ export function AuthProvider({ children }) {
 
   const logout = () => clearAuth()
 
+  const refreshUser = () =>
+    getProfile()
+      .then((res) => setUser(res.data))
+      .catch(() => {})
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

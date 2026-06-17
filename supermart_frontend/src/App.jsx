@@ -20,11 +20,18 @@ import OrderTrackingPage from './pages/storefront/OrderTrackingPage'
 import LoginPage from './pages/storefront/LoginPage'
 import RegisterPage from './pages/storefront/RegisterPage'
 import ForgotPasswordPage from './pages/storefront/ForgotPasswordPage'
+import ProfilePage from './pages/storefront/ProfilePage'
 
 // Delivery
 import DeliveryLayout from './components/layout/DeliveryLayout'
 import DeliveryDashboardPage from './pages/delivery/DeliveryDashboardPage'
 import DeliveryOrderDetailPage from './pages/delivery/DeliveryOrderDetailPage'
+
+// Super admin
+import SuperAdminLayout from './components/layout/SuperAdminLayout'
+import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage'
+import SuperAdminUsersPage from './pages/super-admin/UsersPage'
+import SuperAdminSettingsPage from './pages/super-admin/SettingsPage'
 
 // Admin
 import AdminLayout from './components/layout/AdminLayout'
@@ -74,7 +81,7 @@ function App() {
               <Route path="/account/orders/:orderNumber" element={<ProtectedRoute roles={['customer']}><OrderDetailPage /></ProtectedRoute>} />
               <Route path="/track/:orderNumber" element={<OrderTrackingPage />} />
               <Route path="/track" element={<OrderTrackingPage />} />
-              <Route path="/account/profile" element={<ProtectedRoute roles={['customer']}><Placeholder title="Profile" /></ProtectedRoute>} />
+              <Route path="/account/profile" element={<ProtectedRoute roles={['customer']}><ProfilePage /></ProtectedRoute>} />
 
               {/* Admin — nested layout route */}
               <Route element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminLayout /></ProtectedRoute>}>
@@ -96,8 +103,12 @@ function App() {
                 <Route path="/delivery/orders/:id" element={<DeliveryOrderDetailPage />} />
               </Route>
 
-              {/* Super admin */}
-              <Route path="/super-admin" element={<ProtectedRoute roles={['super_admin']}><Placeholder title="Super Admin" /></ProtectedRoute>} />
+              {/* Super admin — nested layout route */}
+              <Route element={<ProtectedRoute roles={['super_admin']}><SuperAdminLayout /></ProtectedRoute>}>
+                <Route path="/super-admin" element={<SuperAdminDashboardPage />} />
+                <Route path="/super-admin/users" element={<SuperAdminUsersPage />} />
+                <Route path="/super-admin/settings" element={<SuperAdminSettingsPage />} />
+              </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
