@@ -15,7 +15,7 @@ export default function HomePage() {
     queryFn: () => getProducts({ page_size: 8 }),
   })
 
-  const categories = categoriesData?.data || []
+  const categories = categoriesData?.data?.results || categoriesData?.data || []
   const products = productsData?.data?.results || productsData?.data || []
 
   return (
@@ -23,7 +23,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="bg-primary text-white py-16 px-4">
+      <section className="bg-primary text-white py-20 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Fresh groceries,<br />delivered to your door</h1>
           <p className="text-primary-dark/80 text-lg mb-8 text-white/80">Shop from thousands of products at great prices</p>
@@ -36,7 +36,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 py-10 space-y-12">
+      <main className="max-w-7xl mx-auto px-8 sm:px-6 py-12 space-y-14">
 
         {/* Categories */}
         {categories.length > 0 && (

@@ -1,19 +1,20 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { getCategories, getProducts } from '../../api/catalog'
 import ProductGrid from '../../components/product/ProductGrid'
 import Navbar from '../../components/layout/Navbar'
 
 export default function ShopPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    category: searchParams.get('category') || '',
-    in_stock: searchParams.get('in_stock') || '',
-    min_price: searchParams.get('min_price') || '',
-    max_price: searchParams.get('max_price') || '',
-  })
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search])
+  const search    = params.get('search')   || ''
+  const category  = params.get('category') || ''
+  const in_stock  = params.get('in_stock') || ''
+  const min_price = params.get('min_price') || ''
+  const max_price = params.get('max_price') || ''
 
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
@@ -21,25 +22,27 @@ export default function ShopPage() {
   })
 
   const { data: productsData, isLoading } = useQuery({
-    queryKey: ['products', filters],
-    queryFn: () => getProducts(Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''))),
+    queryKey: ['products', search, category, in_stock, min_price, max_price],
+    queryFn: () => {
+      const params = { search, category, in_stock, min_price, max_price }
+      return getProducts(Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '')))
+    },
   })
 
-  const categories = categoriesData?.data || []
-  const products = productsData?.data?.results || productsData?.data || []
+  const categories = categoriesData?.data?.results || categoriesData?.data || []
+  const products   = productsData?.data?.results  || productsData?.data  || []
 
   const updateFilter = (key, value) => {
-    const next = { ...filters, [key]: value }
-    setFilters(next)
-    const params = Object.fromEntries(Object.entries(next).filter(([, v]) => v !== ''))
-    setSearchParams(params)
+    const next = { search, category, in_stock, min_price, max_price, [key]: value }
+    const p = new URLSearchParams(Object.fromEntries(Object.entries(next).filter(([, v]) => v !== '')))
+    navigate(`/shop?${p.toString()}`, { replace: true })
   }
 
   return (
     <div className="min-h-screen bg-cream">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex gap-8">
 
         {/* Sidebar filters */}
         <aside className="hidden md:block w-56 shrink-0 space-y-6">
@@ -49,7 +52,7 @@ export default function ShopPage() {
               <li>
                 <button
                   onClick={() => updateFilter('category', '')}
-                  className={`text-sm w-full text-left px-2 py-1 rounded-lg ${!filters.category ? 'text-primary font-medium' : 'text-gray-600 hover:text-primary'}`}
+                  className={`text-sm w-full text-left px-2 py-1 rounded-lg ${!category ? 'text-primary font-medium' : 'text-gray-600 hover:text-primary'}`}
                 >
                   All
                 </button>
@@ -58,7 +61,7 @@ export default function ShopPage() {
                 <li key={cat.id}>
                   <button
                     onClick={() => updateFilter('category', cat.slug)}
-                    className={`text-sm w-full text-left px-2 py-1 rounded-lg ${filters.category === cat.slug ? 'text-primary font-medium' : 'text-gray-600 hover:text-primary'}`}
+                    className={`text-sm w-full text-left px-2 py-1 rounded-lg ${category === cat.slug ? 'text-primary font-medium' : 'text-gray-600 hover:text-primary'}`}
                   >
                     {cat.name}
                   </button>
@@ -72,7 +75,7 @@ export default function ShopPage() {
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.in_stock === 'true'}
+                checked={in_stock === 'true'}
                 onChange={(e) => updateFilter('in_stock', e.target.checked ? 'true' : '')}
                 className="accent-primary"
               />
@@ -86,14 +89,14 @@ export default function ShopPage() {
               <input
                 type="number"
                 placeholder="Min"
-                value={filters.min_price}
+                value={min_price}
                 onChange={(e) => updateFilter('min_price', e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="number"
                 placeholder="Max"
-                value={filters.max_price}
+                value={max_price}
                 onChange={(e) => updateFilter('max_price', e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -105,7 +108,7 @@ export default function ShopPage() {
         <main className="flex-1">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold text-gray-800">
-              {filters.search ? `Results for "${filters.search}"` : 'All Products'}
+              {search ? `Results for "${search}"` : 'All Products'}
             </h1>
             <span className="text-sm text-gray-400">{products.length} items</span>
           </div>

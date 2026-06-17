@@ -27,7 +27,7 @@ export default function ProductFormPage() {
   const [saving, setSaving] = useState(false)
 
   const { data: categoriesData } = useQuery({ queryKey: ['admin-categories'], queryFn: adminGetCategories })
-  const categories = categoriesData?.data || []
+  const categories = categoriesData?.data?.results || categoriesData?.data || []
 
   const { data: productData } = useQuery({
     queryKey: ['admin-product', id],

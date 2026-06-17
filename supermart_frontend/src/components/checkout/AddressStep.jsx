@@ -22,8 +22,8 @@ export default function AddressStep({ data, onChange, onNext }) {
     queryFn: getDeliveryZones,
   })
 
-  const addresses = addressRes?.data || []
-  const zones = zonesRes?.data || []
+  const addresses = addressRes?.data?.results || addressRes?.data || []
+  const zones = zonesRes?.data?.results || zonesRes?.data || []
 
   const handleSaveAddress = async () => {
     setSaveError('')
