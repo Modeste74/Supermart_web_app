@@ -1,4 +1,6 @@
 asgiref==3.11.1
+gunicorn==23.0.0
+whitenoise==6.9.0
 async-timeout==5.0.1
 certifi==2026.5.20
 charset-normalizer==3.4.7
