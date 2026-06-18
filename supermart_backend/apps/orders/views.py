@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 
 from core.permissions import IsCustomer, IsAdmin, IsAdminOrSuperAdmin, IsDelivery
 
+from .emails import send_order_confirmation, send_order_status_update
 from .models import DeliveryZone, Order
 from .serializers import (
     DeliveryZoneSerializer,
@@ -37,6 +38,7 @@ class PlaceOrderView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
+        send_order_confirmation(order)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
@@ -113,6 +115,7 @@ class AdminOrderStatusUpdateView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
+        send_order_status_update(order)
         return Response(AdminOrderSerializer(order).data)
 
 
@@ -174,4 +177,5 @@ class DeliveryOrderStatusUpdateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order = serializer.save()
+        send_order_status_update(order)
         return Response(AdminOrderSerializer(order).data)
