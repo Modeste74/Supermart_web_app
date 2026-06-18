@@ -60,7 +60,8 @@ export default function ReviewsPage() {
         <div className="text-sm text-gray-400">No reviews found.</div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table className="min-w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Customer</th>
@@ -126,6 +127,7 @@ export default function ReviewsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

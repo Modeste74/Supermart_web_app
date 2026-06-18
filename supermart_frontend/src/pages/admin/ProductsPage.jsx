@@ -49,7 +49,8 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-gray-50 text-left text-gray-500 text-xs uppercase tracking-wide">
               <tr>
                 <th className="px-5 py-3">Product</th>
@@ -93,6 +94,7 @@ export default function ProductsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
