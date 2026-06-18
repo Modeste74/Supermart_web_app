@@ -1,7 +1,6 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db.models import Count, F, Sum
-from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import generics
 from rest_framework.response import Response
@@ -86,22 +85,33 @@ class SalesReportView(APIView):
 
         qs = Order.objects.filter(payment_status='paid')
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            try:
+                dt_from = timezone.make_aware(datetime.strptime(date_from, '%Y-%m-%d'))
+                qs = qs.filter(created_at__gte=dt_from)
+            except ValueError:
+                pass
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            try:
+                dt_to = timezone.make_aware(
+                    datetime.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+                )
+                qs = qs.filter(created_at__lte=dt_to)
+            except ValueError:
+                pass
 
         totals = qs.aggregate(total_revenue=Sum('total'), total_orders=Count('id'))
 
-        daily = list(
-            qs.annotate(date=TruncDate('created_at'))
-            .values('date')
-            .annotate(revenue=Sum('total'), orders=Count('id'))
-            .order_by('date')
-        )
-        for row in daily:
-            if row['date']:
-                row['date'] = row['date'].isoformat()
-            row['revenue'] = float(row['revenue'] or 0)
+        # Group by local date in Python to avoid MySQL CONVERT_TZ dependency
+        from collections import defaultdict
+        daily_map = defaultdict(lambda: {'revenue': 0.0, 'orders': 0})
+        for order in qs.values('created_at', 'total'):
+            date_key = timezone.localtime(order['created_at']).date().isoformat()
+            daily_map[date_key]['revenue'] += float(order['total'] or 0)
+            daily_map[date_key]['orders'] += 1
+        daily = [
+            {'date': d, 'revenue': v['revenue'], 'orders': v['orders']}
+            for d, v in sorted(daily_map.items())
+        ]
 
         return Response({
             'date_from': date_from,
